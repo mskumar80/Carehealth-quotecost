@@ -16,10 +16,9 @@ const VIEWS = {
   summary: { t: 'Pricing summary', icon: '▤', f: vSummary, g: 'Pricing model' },
   costs: { t: 'Cost build-up', icon: '∑', f: vCosts, g: 'Pricing model' },
   methods: { t: 'Method calculator', icon: '⚖', f: vMethods, g: 'Pricing model' },
-  market: { t: 'USA vs India', icon: '⇄', f: vMarket, g: 'Pricing model' },
+  ratesmarket: { t: 'Rates & India Pricing', icon: '⇄', f: vRatesMarket, g: 'Pricing model' },
   workflows: { t: 'Workflow Catalogue', icon: '⧉', f: vWorkflows, g: 'Price admin' },
   tiers: { t: 'Tier Configurator', icon: '◈', f: vTiers, g: 'Price admin' },
-  rates: { t: 'Rate calculator', icon: '▦', f: vRates, g: 'Price admin' },
 };
 const PCOL = ['#0e7c86', '#4f46e5', '#b45309', '#475569', '#be185d', '#15803d', '#7c3aed'];
 const pchip = i => `<span class="pchip" style="--c:${PCOL[i % PCOL.length]}">${esc((S.mod.products[i] || {}).n)}</span>`;

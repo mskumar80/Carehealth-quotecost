@@ -314,6 +314,45 @@ function vMarket() {
     `<p class="foot">Non-labor costs (cloud, AI tokens, licenses, audits, travel) are assumed equal in both markets; edit India unit costs on the Cost build-up tab.</p>`;
 }
 
+// ---------- RATES & INDIA PRICING (merged Rate calculator + USA vs India)
+function vRatesMarket() {
+  const rc = S.rc;
+  // ── Settings
+  const settings = card('Market & delivery settings', `
+    <div class="idx-banner">
+      <div class="idx-main">
+        <div class="idx-label">India price index <span class="mut">— applied to all India market prices</span></div>
+        <div class="idx-ctl">${num('rc.index', { pct: 1, w: 's' })} <span class="idx-pct">${o(rnd(rc.index * 100, 1) + '%')}</span> <span class="mut">of US list</span>
+          <span class="badge ${rc.index < 0.4 ? 'amber' : rc.index < 0.6 ? 'good' : 'bad'}">${rc.index < 0.4 ? 'Deep discount' : rc.index < 0.6 ? 'Moderate' : 'Near parity'}</span>
+        </div>
+      </div>
+      <div class="idx-side">
+        <div class="row col"><label>FX rate (INR per USD)</label>${num('rc.fx', { w: 's', pre: '₹' })}</div>
+        <div class="row col"><label>India rate cap ($/hr)</label>${num('rc.cap', { w: 's', pre: '$' })}</div>
+      </div>
+    </div>
+    <div class="grid3" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--line)">
+      <div class="row col"><label>US market – India share</label>${num('rc.usShare', { pct: 1, w: 's' })}</div>
+      <div class="row col"><label>India market – India share</label>${num('rc.inShare', { pct: 1, w: 's' })}</div>
+      <div class="row col"><label>Hours per consultant day</label>${num('rc.hrsDay', { w: 's' })}</div>
+      <div class="row col"><label>Hours per FTE month</label>${num('rc.hrsMonth', { w: 's' })}</div>
+    </div>`);
+  // ── Role blended rates
+  const rateRows = rc.roles.map((r, i) => { const c = R.roles[i], p = 'rc.roles.' + i;
+    return tr([`<b>${esc(r.n)}</b>`, num(p + '.us', { pre: '$', w: 's' }), num(p + '.in', { pre: '$', w: 's' }) + ' ' + o(c.capWarn ? 'Above cap' : '', c.capWarn ? 'badge bad' : ''),
+      num(p + '.usS', { pct: 1, w: 's', nul: 1, ph: rnd(rc.usShare * 100, 2) }), o(usd(c.bUS), 'b'), num(p + '.inS', { pct: 1, w: 's', nul: 1, ph: rnd(rc.inShare * 100, 2) }), o(usd(c.bIN), 'b')]); });
+  const rateCard = card('Role blended rates — loaded $/hr', table(['Role', 'US rate', 'India rate', 'US mkt: India share', 'US mkt blended', 'India mkt: India share', 'India mkt blended'], rateRows));
+  // ── USA vs India service pricing
+  const mpRows = R.mp.map((m, i) => tr([`<b>${esc(m.name)}</b><div class="mut">${esc(m.unit)}</div>`, o(usd(m.usCost)), o(pct(m.tm)), o(usd(m.usList), 'b'), o(pct(m.usM)),
+    o(usd(m.inCost)), num('mp.idx.' + i, { pct: 1, w: 's', nul: 1, ph: rnd(S.rc.index * 100, 2) }), o(usd(m.J)), o(pct(m.fl)), o(usd(m.Lf)), o(usd(m.M), 'b'), o(inr(m.INR), 'b'), o(pct(m.inM)),
+    o(m.floorApplied ? 'Floor applied' : 'Index price', 'badge ' + (m.floorApplied ? 'amber' : 'good')), o(pct(m.save))]));
+  const mpCard = card('USA vs India — service pricing',
+    `<p class="sub">India price = US list × India price index, never below India cost ÷ (1 − margin floor). Leave per-service index blank to use the global setting above.</p>` +
+    table(['Service', 'US cost/unit', 'Target margin', 'US list/unit', 'US margin', 'India cost/unit', 'India index', 'Index price', 'Min floor', 'Floor price', 'India ($)', 'India (₹)', 'India margin', 'Basis', 'Saving'], mpRows, 'dense') +
+    `<p class="foot">Non-labor costs (cloud, AI tokens, licenses, audits, travel) are equal in both markets; edit India costs on Cost build-up.</p>`);
+  return head('Rates & India Pricing', 'Blended rate = US rate × (1 − India share) + India rate × India share. India market price = US list × price index.') + settings + rateCard + mpCard;
+}
+
 function renderView() { OC = 0; document.getElementById('view').innerHTML = VIEWS[VIEW].f(); }
 function patch() {
   OC = 0; const tmp = document.createElement('div'); tmp.innerHTML = VIEWS[VIEW].f();
