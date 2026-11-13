@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CareTech360.AI Easy Quote</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="src/styles.css">
+</head>
+<body>
+  <div class="app">
+    <aside>
+      <div class="brand"><div class="lg">CT</div><div><b>CareTech360.AI</b><small>Easy Quote · pricing</small></div></div>
+      <nav id="nav"></nav>
+      <div class="side-foot">Edits save automatically in this browser. Pricing model built from CareTech360-Pricing-Methods.xlsx.</div>
+    </aside>
+    <main><div id="kpis"></div><div id="view"></div></main>
+  </div>
+  <div id="dlg"></div>
+  <div id="toast"></div>
+
+  <!-- PDF generation (vendored, no CDN dependency) -->
+  <script src="vendor/jspdf.umd.min.js"></script>
+  <script src="vendor/jspdf.plugin.autotable.min.js"></script>
+  <!-- App: order matters (classic scripts share globals) -->
+  <script src="src/model.js"></script>
+  <script src="src/ui/core.js"></script>
+  <script src="src/ui/app.js"></script>
+</body>
+</html>
