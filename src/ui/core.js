@@ -317,31 +317,40 @@ function vMarket() {
 // ---------- RATES & INDIA PRICING (merged Rate calculator + USA vs India)
 function vRatesMarket() {
   const rc = S.rc;
-  // ── Settings
-  const settings = card('Market & delivery settings', `
-    <div class="idx-banner">
-      <div class="idx-main">
-        <div class="idx-label">India price index <span class="mut">— applied to all India market prices</span></div>
-        <div class="idx-ctl">${num('rc.index', { pct: 1, w: 's' })} <span class="idx-pct">${o(rnd(rc.index * 100, 1) + '%')}</span> <span class="mut">of US list</span>
-          <span class="badge ${rc.index < 0.4 ? 'amber' : rc.index < 0.6 ? 'good' : 'bad'}">${rc.index < 0.4 ? 'Deep discount' : rc.index < 0.6 ? 'Moderate' : 'Near parity'}</span>
-        </div>
-      </div>
-      <div class="idx-side">
-        <div class="row col"><label>FX rate (INR per USD)</label>${num('rc.fx', { w: 's', pre: '₹' })}</div>
-        <div class="row col"><label>India rate cap ($/hr)</label>${num('rc.cap', { w: 's', pre: '$' })}</div>
-      </div>
-    </div>
-    <div class="grid3" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--line)">
-      <div class="row col"><label>US market – India share</label>${num('rc.usShare', { pct: 1, w: 's' })}</div>
+  const rateTab = (S.ui || {}).rateTab || 'us';
+
+  // ── Settings: delivery mix first, then India pricing params below
+  const settings = card('Delivery & market settings', `
+    <div class="grid3">
+      <div class="row col"><label>US market – India share ${tip('% of hours fulfilled from India for US-market deals.')}</label>${num('rc.usShare', { pct: 1, w: 's' })}</div>
       <div class="row col"><label>India market – India share</label>${num('rc.inShare', { pct: 1, w: 's' })}</div>
       <div class="row col"><label>Hours per consultant day</label>${num('rc.hrsDay', { w: 's' })}</div>
       <div class="row col"><label>Hours per FTE month</label>${num('rc.hrsMonth', { w: 's' })}</div>
+    </div>
+    <div class="grid3" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line)">
+      <div class="row col"><label>India price index <span class="mut">(% of US list)</span></label>
+        <div style="display:flex;align-items:center;gap:8px">${num('rc.index', { pct: 1, w: 's' })} ${o(rc.index < 0.4 ? 'Deep discount' : rc.index < 0.6 ? 'Moderate' : 'Near parity', 'badge ' + (rc.index < 0.4 ? 'amber' : rc.index < 0.6 ? 'good' : 'bad'))}</div>
+      </div>
+      <div class="row col"><label>FX rate (INR per USD)</label>${num('rc.fx', { w: 's', pre: '₹' })}</div>
+      <div class="row col"><label>India rate cap ($/hr)</label>${num('rc.cap', { w: 's', pre: '$' })}</div>
     </div>`);
-  // ── Role blended rates
-  const rateRows = rc.roles.map((r, i) => { const c = R.roles[i], p = 'rc.roles.' + i;
-    return tr([`<b>${esc(r.n)}</b>`, num(p + '.us', { pre: '$', w: 's' }), num(p + '.in', { pre: '$', w: 's' }) + ' ' + o(c.capWarn ? 'Above cap' : '', c.capWarn ? 'badge bad' : ''),
-      num(p + '.usS', { pct: 1, w: 's', nul: 1, ph: rnd(rc.usShare * 100, 2) }), o(usd(c.bUS), 'b'), num(p + '.inS', { pct: 1, w: 's', nul: 1, ph: rnd(rc.inShare * 100, 2) }), o(usd(c.bIN), 'b')]); });
-  const rateCard = card('Role blended rates — loaded $/hr', table(['Role', 'US rate', 'India rate', 'US mkt: India share', 'US mkt blended', 'India mkt: India share', 'India mkt blended'], rateRows));
+
+  // ── Role blended rates with US / India toggle
+  const toggle = `<div class="rate-toggle">${seg('ui.rateTab', [['us', 'US Market'], ['in', 'India Market']])}</div>`;
+  let rateRows, rateCols;
+  if (rateTab === 'in') {
+    rateRows = rc.roles.map((r, i) => { const c = R.roles[i], p = 'rc.roles.' + i;
+      return tr([`<b>${esc(r.n)}</b>`, num(p + '.in', { pre: '$', w: 's' }) + ' ' + o(c.capWarn ? 'Above cap' : '', c.capWarn ? 'badge bad' : ''),
+        num(p + '.inS', { pct: 1, w: 's', nul: 1, ph: rnd(rc.inShare * 100, 2) }), o(usd(c.bIN), 'b')]); });
+    rateCols = ['Role', 'India rate ($/hr)', 'India share %', 'India blended rate'];
+  } else {
+    rateRows = rc.roles.map((r, i) => { const c = R.roles[i], p = 'rc.roles.' + i;
+      return tr([`<b>${esc(r.n)}</b>`, num(p + '.us', { pre: '$', w: 's' }),
+        num(p + '.usS', { pct: 1, w: 's', nul: 1, ph: rnd(rc.usShare * 100, 2) }), o(usd(c.bUS), 'b')]); });
+    rateCols = ['Role', 'US rate ($/hr)', 'India share %', 'US blended rate'];
+  }
+  const rateCard = card('Role blended rates — loaded $/hr', toggle + table(rateCols, rateRows));
+
   // ── USA vs India service pricing
   const mpRows = R.mp.map((m, i) => tr([`<b>${esc(m.name)}</b><div class="mut">${esc(m.unit)}</div>`, o(usd(m.usCost)), o(pct(m.tm)), o(usd(m.usList), 'b'), o(pct(m.usM)),
     o(usd(m.inCost)), num('mp.idx.' + i, { pct: 1, w: 's', nul: 1, ph: rnd(S.rc.index * 100, 2) }), o(usd(m.J)), o(pct(m.fl)), o(usd(m.Lf)), o(usd(m.M), 'b'), o(inr(m.INR), 'b'), o(pct(m.inM)),

@@ -16,7 +16,7 @@ const VIEWS = {
   summary: { t: 'Pricing summary', icon: '▤', f: vSummary, g: 'Pricing model' },
   costs: { t: 'Cost build-up', icon: '∑', f: vCosts, g: 'Pricing model' },
   methods: { t: 'Method calculator', icon: '⚖', f: vMethods, g: 'Pricing model' },
-  ratesmarket: { t: 'Rates & India Pricing', icon: '⇄', f: vRatesMarket, g: 'Pricing model' },
+  ratesmarket: { t: 'Rates & India Pricing', icon: '⇄', f: vRatesMarket, g: 'Price admin' },
   workflows: { t: 'Workflow Catalogue', icon: '⧉', f: vWorkflows, g: 'Price admin' },
   tiers: { t: 'Tier Configurator', icon: '◈', f: vTiers, g: 'Price admin' },
 };
