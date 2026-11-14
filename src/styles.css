@@ -44,6 +44,10 @@ aside{background:linear-gradient(160deg,#060f1e 0%,#0a2d40 55%,#0a4a5c 100%);col
 .lf-row{margin-bottom:16px}.lf-row label{display:block;font-size:12px;font-weight:600;color:#475569;margin-bottom:5px;letter-spacing:.02em;text-transform:uppercase}
 .lf-row input{width:100%;padding:12px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;font-family:inherit;outline:none;transition:border .15s,box-shadow .15s;color:#0f172a;background:#f8fafc}
 .lf-row input:focus{border-color:#0e7c86;box-shadow:0 0 0 3px rgba(14,124,134,.12);background:#fff}
+.lf-pwd-wrap{position:relative;display:flex;align-items:center}
+.lf-pwd-wrap input{flex:1;padding-right:60px}
+.lf-pwd-toggle{position:absolute;right:12px;border:none;background:transparent;color:#64748b;font-size:12px;font-weight:600;cursor:pointer;padding:4px 6px;border-radius:6px;font-family:inherit;letter-spacing:.02em}
+.lf-pwd-toggle:hover{color:#0e7c86;background:rgba(14,124,134,.08)}
 .login-err{color:#dc2626;font-size:13px;margin-bottom:12px;padding:9px 12px;background:#fee2e2;border-radius:8px;font-weight:500}
 .login-submit{width:100%;margin-top:8px;padding:13px;font-size:15px;font-weight:700;border-radius:10px}
 .login-hint{font-size:12px;color:#94a3b8;margin:14px 0 0;text-align:center}

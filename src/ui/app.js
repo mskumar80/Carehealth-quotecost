@@ -11,7 +11,7 @@ function clearSession() { try { localStorage.removeItem(AS_KEY); } catch {} }
 (function() { if (!loadUsers()) saveUsers([{ id: 'caretech', password: 'caretech360', name: 'CareTech Admin', role: 'admin', addedAt: new Date().toISOString() }]); })();
 let SESSION = null;
 function checkSession() { const s = getSession(); if (!s) return null; const users = loadUsers() || []; return users.find(u => u.id === s.userId) ? s : null; }
-function tryLogin(uid, pwd) { const u = (loadUsers() || []).find(x => x.id === uid.trim().toLowerCase() && x.password === pwd); return u ? { userId: u.id, name: u.name, role: u.role } : null; }
+function tryLogin(uid, pwd) { const u = (loadUsers() || []).find(x => x.id === uid.trim().toLowerCase() && x.password === pwd.trim()); return u ? { userId: u.id, name: u.name, role: u.role } : null; }
 
 function renderSideUser() {
   const el = document.getElementById('side-user'); if (!el || !SESSION) return;
@@ -41,6 +41,12 @@ function initLoginScreen() {
   const uid = document.getElementById('login-uid');
   const pwd = document.getElementById('login-pwd');
   const err = document.getElementById('login-err');
+  const tog = document.getElementById('login-pwd-toggle');
+  if (tog) tog.addEventListener('click', () => {
+    const show = pwd.type === 'password';
+    pwd.type = show ? 'text' : 'password';
+    tog.textContent = show ? 'Hide' : 'Show';
+  });
   function doLogin() {
     const sess = tryLogin(uid.value, pwd.value);
     if (sess) { SESSION = sess; persistSession(sess); showApp(); R = compute(S); location.hash = 'quote'; route(); }
@@ -494,7 +500,7 @@ document.addEventListener('click', e => {
       'Add user', () => {
         const id = ((document.getElementById('nu-id') || {}).value || '').trim().toLowerCase();
         const name = ((document.getElementById('nu-name') || {}).value || '').trim();
-        const pwd = (document.getElementById('nu-pwd') || {}).value || '';
+        const pwd = ((document.getElementById('nu-pwd') || {}).value || '').trim();
         const role = (document.getElementById('nu-role') || {}).value || 'user';
         if (!id || !name || !pwd) { toast('Fill in all fields'); return; }
         const users = loadUsers() || [];
