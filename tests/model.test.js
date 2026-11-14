@@ -21,22 +21,22 @@ test('Cost Build-Up unit costs (H19/H33/H46/H59/H69/H78, L columns)', () => {
 
 test('Workflow Catalogue (H, O, P, T) and tiers (rows 42–46)', () => {
   const R = compute(DEFAULTS());
-  close(R.wc.wf[0].H, 16978.75, 'Patient Intake dev cost');
-  close(R.wc.wf[0].O, 38.8945, 'Patient Intake cost/loc/mo');
-  close(R.wc.wf[4].P, 466.0833, 'Billing/RCM list');
-  close(R.wc.wf[2].T, 91.0426, 'Prior Auth India cost');
+  close(R.wc.wf[0].H, 18782.75, 'Patient Intake dev cost');
+  close(R.wc.wf[0].O, 51.6461, 'Patient Intake cost/loc/mo');
+  close(R.wc.wf[4].P, 574.11, 'Billing/RCM list');
+  close(R.wc.wf[2].T, 111.4468, 'Prior Auth India cost');
   const [s, g, p] = R.wc.tiers;
-  close(s.price, 938.4574, 'Starter price'); close(g.price, 1249.6935, 'Growth price'); close(p.price, 1960.8254, 'Premium price');
-  close(g.cost, 329.6556, 'Growth cost'); close(g.incTok, 2.3, 'Growth tokens');
+  close(s.price, 1039.7191, 'Starter price'); close(g.price, 1415.9940, 'Growth price'); close(p.price, 2286.7572, 'Premium price');
+  close(g.cost, 375.8502, 'Growth cost'); close(g.incTok, 2.3, 'Growth tokens');
   close(R.wc.platFee, 629.3333, 'Platform fee');
 });
 
 test('Pricing Summary rows 4–9 (Q, R, O)', () => {
   const R = compute(DEFAULTS());
-  const q = [6248.4675, 571.88, 8536.5, 14916.3636, 10778.4615, 1491.4074];
-  const r = [0.7362, 0.5, 0.2857, 0.45, 0.35, 0.55];
+  const q = [7079.9700, 571.88, 8536.5, 14916.3636, 10778.4615, 1491.4074];
+  const r = [0.7346, 0.5, 0.2857, 0.45, 0.35, 0.55];
   R.ps.rows.forEach((row, i) => { close(row.Q, q[i], 'Q' + (i + 4)); close(row.R, r[i], 'R' + (i + 4), 0.0001); assert.equal(row.ok, true); });
-  close(R.ps.rows[0].P, 0.0523, 'P4 bundle discount', 0.0001);
+  close(R.ps.rows[0].P, 0.0581, 'P4 bundle discount', 0.0001);
   close(R.ps.rows[0].O, 0.375, 'O4 max discount', 0.0001);
 });
 
@@ -51,14 +51,14 @@ test('Method Calculator recommended prices (row 51) and mechanics', () => {
 
 test('Market Pricing India (M, N)', () => {
   const R = compute(DEFAULTS());
-  close(R.mp[1].M, 781.4976, 'Growth India $');
-  close(R.mp[1].INR, 74242.2707, 'Growth India INR', 0.05);
+  close(R.mp[1].M, 894.9653, 'Growth India $');
+  close(R.mp[1].INR, 85021.7030, 'Growth India INR', 0.05);
   close(R.mp[4].M, 5215.625, 'Custom build India');
 });
 
 test('Workbook quote totals (Workflow Catalogue C59–C64)', () => {
   const R = compute(DEFAULTS());
-  close(R.quote.mrr, 8311.7549, 'MRR');
+  close(R.quote.mrr, 9143.2574, 'MRR');
   close(R.quote.otc, 34231.3252, 'one-time');
 });
 

@@ -1,7 +1,63 @@
 // CareTech360 Easy Quote — app shell: state, navigation, Easy Quote wizard, Services & packages, PDF, events.
+// ===== AUTH =====
+const AU_KEY = 'ct360-users';
+const AS_KEY = 'ct360-session';
+function loadUsers() { try { const u = JSON.parse(localStorage.getItem(AU_KEY) || 'null'); return (u && u.length) ? u : null; } catch { return null; } }
+function saveUsers(arr) { try { localStorage.setItem(AU_KEY, JSON.stringify(arr)); } catch {} }
+function getSession() { try { return JSON.parse(localStorage.getItem(AS_KEY) || 'null'); } catch { return null; } }
+function persistSession(u) { try { localStorage.setItem(AS_KEY, JSON.stringify(u)); } catch {} }
+function clearSession() { try { localStorage.removeItem(AS_KEY); } catch {} }
+// Seed default admin user if none exist
+(function() { if (!loadUsers()) saveUsers([{ id: 'caretech', password: 'caretech360', name: 'CareTech Admin', role: 'admin', addedAt: new Date().toISOString() }]); })();
+let SESSION = null;
+function checkSession() { const s = getSession(); if (!s) return null; const users = loadUsers() || []; return users.find(u => u.id === s.userId) ? s : null; }
+function tryLogin(uid, pwd) { const u = (loadUsers() || []).find(x => x.id === uid.trim().toLowerCase() && x.password === pwd); return u ? { userId: u.id, name: u.name, role: u.role } : null; }
+
+function renderSideUser() {
+  const el = document.getElementById('side-user'); if (!el || !SESSION) return;
+  el.innerHTML = `<div class="su-info"><span class="su-av">${SESSION.name[0].toUpperCase()}</span>
+    <span class="su-name">${esc(SESSION.name)}<span class="su-role">${SESSION.role}</span></span>
+    <button class="su-logout" id="logout-btn" title="Sign out">⏻</button></div>`;
+  document.getElementById('logout-btn').onclick = () => {
+    clearSession(); SESSION = null;
+    history.replaceState(null, '', location.pathname);
+    document.querySelector('.app').style.display = 'none';
+    document.getElementById('login-screen').style.display = '';
+    document.getElementById('login-uid').value = '';
+    document.getElementById('login-pwd').value = '';
+    document.getElementById('login-err').hidden = true;
+    setTimeout(() => document.getElementById('login-uid').focus(), 50);
+  };
+}
+
+function showApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.querySelector('.app').style.display = '';
+  renderSideUser();
+}
+
+function initLoginScreen() {
+  const btn = document.getElementById('login-btn');
+  const uid = document.getElementById('login-uid');
+  const pwd = document.getElementById('login-pwd');
+  const err = document.getElementById('login-err');
+  function doLogin() {
+    const sess = tryLogin(uid.value, pwd.value);
+    if (sess) { SESSION = sess; persistSession(sess); showApp(); R = compute(S); location.hash = 'quote'; route(); }
+    else { err.textContent = 'Incorrect user ID or password.'; err.hidden = false; pwd.value = ''; pwd.focus(); }
+  }
+  btn.addEventListener('click', doLogin);
+  pwd.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+  uid.addEventListener('keydown', e => { if (e.key === 'Enter') pwd.focus(); });
+  uid.focus();
+}
+
 // ===== Easy Quote app shell =====
 let S, R, VIEW = 'quote', OC = 0;
 const LS_KEY = 'ct360-easyquote-v3';
+const SQ_KEY = 'ct360-savedquotes';
+function loadSavedQuotes() { try { return JSON.parse(localStorage.getItem(SQ_KEY) || '[]'); } catch { return []; } }
+function saveSavedQuotesStore(arr) { try { localStorage.setItem(SQ_KEY, JSON.stringify(arr)); } catch {} }
 try { const s = localStorage.getItem(LS_KEY); S = s ? JSON.parse(s) : DEFAULTS(); } catch (e) { S = DEFAULTS(); }
 if (!S || !S.w || !S.pk || !S.mod) S = DEFAULTS();
 (() => { if (S.cb.amort == null) { const L0 = S.cb.sec.platform.find(l => /development/i.test(l.l)); S.cb.amort = L0 ? L0.s : 12; if (L0) L0.am = 1; } })();
@@ -12,13 +68,15 @@ S.wc.wf.forEach(w => Object.assign(w, workflowMeta(w)));
 
 const VIEWS = {
   quote: { t: 'Easy Quote', icon: '✦', f: vEasy, g: 'Quote' },
-  catalogue: { t: 'Services & packages', icon: '◇', f: vCatalogue, g: 'Pricing model' },
-  summary: { t: 'Pricing summary', icon: '▤', f: vSummary, g: 'Pricing model' },
+  savedquotes: { t: 'Saved Quotes', icon: '◉', f: vSavedQuotes, g: 'Quote' },
+  catalogue: { t: 'Package Designer', icon: '◇', f: vCatalogue, g: 'Pricing model' },
   costs: { t: 'Cost build-up', icon: '∑', f: vCosts, g: 'Pricing model' },
   methods: { t: 'Method calculator', icon: '⚖', f: vMethods, g: 'Pricing model' },
+  workflows: { t: 'Workflow Catalogue', icon: '⧉', f: vWorkflows, g: 'Pricing model' },
+  summary: { t: 'Pricing summary', icon: '▤', f: vSummary, g: 'Price admin' },
   ratesmarket: { t: 'Rates & India Pricing', icon: '⇄', f: vRatesMarket, g: 'Price admin' },
-  workflows: { t: 'Workflow Catalogue', icon: '⧉', f: vWorkflows, g: 'Price admin' },
   tiers: { t: 'Tier Configurator', icon: '◈', f: vTiers, g: 'Price admin' },
+  users: { t: 'User Management', icon: '◯', f: vUsers, g: 'Admin', adminOnly: true },
 };
 const PCOL = ['#0e7c86', '#4f46e5', '#b45309', '#475569', '#be185d', '#15803d', '#7c3aed'];
 const pchip = i => `<span class="pchip" style="--c:${PCOL[i % PCOL.length]}">${esc((S.mod.products[i] || {}).n)}</span>`;
@@ -38,7 +96,9 @@ const STEPS = ['Hospital details', 'Services & package', 'Other services', 'Fina
 function vEasy() {
   const st = S.w.step, body = [w1, w2, w3, w4][st - 1]();
   const stepper = `<div class="stepper">${STEPS.map((s, i) => `<button class="st ${st === i + 1 ? 'on' : ''} ${st > i + 1 ? 'done' : ''}" data-go="${i + 1}"><span>${st > i + 1 ? '✓' : i + 1}</span>${s}</button>`).join('<i></i>')}</div>`;
-  return head('Easy Quote', 'Hospital details → services & package → other services → final pricing and PDF.', `<button class="btn ghost" data-act="newquote">Start a new quote</button>`) +
+  const firstName = SESSION && SESSION.name ? SESSION.name.split(' ')[0] : '';
+  const welcome = firstName ? `<div class="eq-brand-header"><span class="eq-welcome">Welcome, <b>${esc(firstName)}</b></span></div>` : '';
+  return welcome + head('Easy Quote', 'Hospital details → services &amp; package → other services → final pricing and PDF.', `<button class="btn ghost" data-act="newquote">Start a new quote</button>`) +
     stepper + (st < 4 ? `<div class="wgrid"><div class="wmain">${body}</div><div class="wside">${side()}</div></div>` : body);
 }
 const navBtns = (back, next, label, disabled, hint = '') => `<div class="wnav">${back ? `<button class="btn ghost" data-go="${back}">← Back</button>` : '<span></span>'}
@@ -117,7 +177,7 @@ function w2() {
       <span>× ${q.locs} location${q.locs == 1 ? '' : 's'}</span>${o(money(pl.price * pl.qty), 'b')}
     </div>
     <div class="provbox"><div class="row"><label>Number of providers <small class="mut">MD, DO, NP, PA</small></label>${stepNum('w.providers', 0)}</div>
-      <div class="kv2"><span>Included (${W.P.prov} per location)</span>${o(W.provIncl)}<span>Additional providers × ${money(pv.price)} / month</span>${o(W.extraProv + ' · ' + money(W.extraProv * pv.price))}</div></div>
+      <div class="kv2"><span>Included (${W.P.prov} per location)</span>${o(W.P.prov)}<span>Additional providers × ${money(pv.price)} / month</span>${o(W.extraProv + ' · ' + money(W.extraProv * pv.price))}</div></div>
     ${S.q.market === 'IN' ? '<p class="mut">India market: package price = US price × India index, never below the India margin floor.</p>' : ''}`, 'pricecard');
   return card('2 · Choose a package, then pick its services', pkgs + customRow +
       `<div class="selbar"><div><b>${o(P.count ? `${W.sel.length} of ${P.count} services selected` : `${W.sel.length} services selected`)}</b>
@@ -167,7 +227,7 @@ function w4() {
   const svcRows = W.sel.map(s => tr([esc(s.n), esc(s.mod), pchip(s.p), s.disc ? '−' + pct(s.disc) : '—', money(svcPrice(s))]));
   const addr = [h.addr, [h.city, h.state].filter(Boolean).join(', '), h.zip].filter(Boolean).join(' · ');
   return `<div class="qactions"><div class="flex">${chk('w.showMargin', 'Show internal cost & margin', true)}</div>
-      <div class="flex"><button class="btn ghost" data-go="3">← Back</button><button class="btn ghost" data-act="copy">Copy summary</button><button class="btn big" data-act="pdf">⬇ Generate PDF</button></div></div>
+      <div class="flex"><button class="btn ghost" data-go="3">← Back</button><button class="btn ghost" data-act="copy">Copy summary</button><button class="btn ghost" data-act="savequote">◉ Save quote</button><button class="btn big" data-act="pdf">⬇ Generate PDF</button></div></div>
     <article class="qdoc">
       <header class="qh"><div class="ql"><div class="lg">CT</div><div><b>CareTech360.AI</b><small>Physician-designed intelligence. Personalized to your practice. HIPAA-aligned.</small></div></div>
         <div class="qmeta"><div class="qt2">QUOTE</div><div>${esc(w.quoteNo)}</div><div>Date ${fd(today)}</div><div>Valid until ${fd(valid)}</div></div></header>
@@ -201,12 +261,35 @@ function terms() {
 // ---------- SERVICES & PACKAGES (pricing model)
 function vCatalogue() {
   const md = S.mod, M = R.mod, w = S.w;
-  const pk = card('Packages', `<p class="sub">How many services each package bundles, its discount on the services, and the providers included per location. Customers can also create their own bundle.</p>` +
-    table(['', ...S.pk.map((p, i) => `<input class="txt c" data-p="pk.${i}.n" data-txt="1" value="${esc(p.n)}">`), 'Create a bundle'], [
-      tr(['<b>Services in package</b>', ...S.pk.map((p, i) => num(`pk.${i}.count`, { w: 'xs', min: 1, step: 1 })), '<span class="mut">Any</span>']),
-      tr(['<b>Bundle discount</b>', ...S.pk.map((p, i) => num(`pk.${i}.disc`, { pct: 1, w: 'xs' })), num('w.customDisc', { pct: 1, w: 'xs' })]),
-      tr(['<b>Providers included / location</b>', ...S.pk.map((p, i) => num(`pk.${i}.prov`, { w: 'xs', min: 0 })), num('w.customProv', { w: 'xs', min: 0 })]),
-      tr(['<b>Tagline</b>', ...S.pk.map((p, i) => `<input class="txt" data-p="pk.${i}.tag" data-txt="1" value="${esc(p.tag)}">`), ''])], 'tiers-t'));
+  const pkCards = S.pk.map((p, i) => `<div class="pkg-card">
+    <div class="pkg-card-head">
+      <input class="txt pkg-name" data-p="pk.${i}.n" data-txt="1" value="${esc(p.n)}" aria-label="Package name">
+    </div>
+    <div class="pkg-tagline-row">
+      <input class="txt pkg-tag" data-p="pk.${i}.tag" data-txt="1" value="${esc(p.tag)}" placeholder="Add a tagline…" aria-label="Tagline">
+    </div>
+    <div class="pkg-fields">
+      <div class="pkg-field"><span class="pkg-field-label">Services in package</span><div class="pkg-field-inp">${num(`pk.${i}.count`, { w: 's', min: 1, step: 1 })}</div></div>
+      <div class="pkg-field"><span class="pkg-field-label">Bundle discount</span><div class="pkg-field-inp">${num(`pk.${i}.disc`, { pct: 1, w: 's' })}</div></div>
+      <div class="pkg-field"><span class="pkg-field-label">Providers / location</span><div class="pkg-field-inp">${num(`pk.${i}.prov`, { w: 's', min: 0 })}</div></div>
+    </div>
+    <div class="pkg-card-foot">
+      <span class="pkg-foot-label">Services included</span>
+      <span class="pkg-foot-val">${o(String(p.count), 'pkg-foot-num')}</span>
+    </div>
+  </div>`).join('');
+  const customCard = `<div class="pkg-card">
+    <div class="pkg-card-head"><span class="pkg-name">Create a bundle</span></div>
+    <div class="pkg-tagline-row"><span class="pkg-tag">Customer picks any mix of services.</span></div>
+    <div class="pkg-fields">
+      <div class="pkg-field"><span class="pkg-field-label">Services in package</span><div class="pkg-field-inp"><span class="mut" style="font-size:13px">Any</span></div></div>
+      <div class="pkg-field"><span class="pkg-field-label">Bundle discount</span><div class="pkg-field-inp">${num('w.customDisc', { pct: 1, w: 's' })}</div></div>
+      <div class="pkg-field"><span class="pkg-field-label">Providers / location</span><div class="pkg-field-inp">${num('w.customProv', { w: 's', min: 0 })}</div></div>
+    </div>
+    <div class="pkg-card-foot"><span class="pkg-foot-label">Flexible selection</span></div>
+  </div>`;
+  const pk = `<div class="pkg-banner"><div class="pkg-banner-title">Packages</div><p class="pkg-banner-sub">Each package bundles a set number of services at a discount. Customers can also build a custom selection.</p></div>
+    <div class="pkg-card-grid">${pkCards}${customCard}</div>`;
   const fees = card('Fees — input cost & margin', table(['Fee', 'Input cost', 'Margin', 'Price', 'Margin floor', 'Basis'], [
     tr(['<b>Platform fee</b> <span class="mut">per location / month</span>', num('mod.platCost', { pre: '$', w: 's', nul: 1, ph: rnd(R.wc.platCost, 2) }), num('mod.platM', { pct: 1, w: 'xs', nul: 1, ph: rnd(R.ps.tm[0] * 100, 2) }), o(usd(M.fee), 'b'), o(pct(R.ps.fl[0])), '<span class="mut">Blank = linked to Cost build-up and Pricing summary</span>']),
     tr(['<b>Additional provider</b> <span class="mut">per provider / month</span>', num('w.provCost', { pre: '$', w: 's' }), num('w.provM', { pct: 1, w: 'xs' }), o(usd(R.w.provPrice), 'b'), o(pct(R.ps.fl[0])), '<span class="mut">Above the package’s included providers</span>']),
@@ -236,7 +319,7 @@ function vCatalogue() {
   const apps = card('Apps — input cost & margin', `<div class="flex" style="margin-bottom:10px"><div class="row"><label>One-time margin floor</label>${num('mod.appFloorOne', { pct: 1, w: 'xs' })}</div><div class="row"><label>Monthly margin floor</label>${num('mod.appFloorMo', { pct: 1, w: 'xs' })}</div>
     <span class="mut">Patient mobile app costs link to Cost build-up 5a / 5b when blank.</span></div>` +
     table(['App', 'One-time input cost', 'Margin', 'One-time price', 'Monthly input cost', 'Margin', 'Monthly price', 'IP owner'], appRows, 'dense'));
-  return head('Services & packages', 'Configure what Easy Quote sells: packages, fees, the service catalogue and apps — each with an input cost and margin.', `<button class="btn ghost" data-act="reset">Reset all to workbook values</button>`) + pk + fees + structure + apps + products;
+  return head('Package Designer', 'Configure packages, fees, the service catalogue and apps — each with an input cost and margin.', `<button class="btn ghost" data-act="reset">Reset all to workbook values</button>`) + pk + fees + structure + apps + products;
 }
 
 // ---------- PDF
@@ -247,8 +330,28 @@ function buildPDF() {
   const W = R.w, w = S.w, h = w.hosp, q = S.q, pw = doc.internal.pageSize.getWidth(), M = 40, teal = [11, 85, 99];
   const today = new Date(), valid = new Date(today.getTime() + w.validDays * 864e5), fd = d => d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
   doc.setFillColor(...teal); doc.rect(0, 0, pw, 78, 'F');
-  doc.setTextColor(255); doc.setFont('helvetica', 'bold'); doc.setFontSize(20); doc.text('CareTech360.AI', M, 38);
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.text(['Physician-designed intelligence.', 'Personalized to your practice. HIPAA-aligned.'], M, 52);
+  // Draw CT360 geometric mark (scaled to ~28pt height, anchored at x=M, centered y=39)
+  const mx = M, my = 39, ms = 0.42; // scale factor: 58*ms≈24pt
+  const pt = (x, y) => [mx + x * ms, my + (y - 29) * ms]; // center mark vertically
+  const gold1 = [168, 132, 47], gold2 = [200, 162, 76];
+  // Lines
+  [[18.6,5.3,47.25,6.63],[18.6,51.9,47.25,50.57],[5.3,28.6,18.6,5.3],[5.3,28.6,18.6,51.9]].forEach(([x1,y1,x2,y2]) => {
+    doc.setDrawColor(...gold1); doc.setLineWidth(0.7); doc.line(...pt(x1,y1), ...pt(x2,y2));
+  });
+  [[18.6,5.3,31.94,28.6],[18.6,51.9,31.94,28.6],[5.3,28.6,31.94,28.6]].forEach(([x1,y1,x2,y2]) => {
+    doc.setDrawColor(...gold2); doc.setLineWidth(0.5); doc.line(...pt(x1,y1), ...pt(x2,y2));
+  });
+  // Nodes
+  [[18.62,5.3,1.5,gold1],[5.31,28.6,1.5,gold1],[18.62,51.9,1.5,gold1],[47.25,50.57,1.5,gold1],[47.25,6.63,1.5,gold2]].forEach(([x,y,r,col]) => {
+    doc.setFillColor(...col); doc.circle(...pt(x,y), r * ms, 'F');
+  });
+  doc.setFillColor(...gold2); doc.setDrawColor(...gold1); doc.setLineWidth(0.4);
+  doc.circle(...pt(31.94,28.6), 2.1 * ms, 'FD');
+  // Brand name text
+  const brandX = mx + 53 * ms + 7;
+  doc.setTextColor(255); doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.text('CareTech360', brandX, 36);
+  doc.setTextColor(gold2[0], gold2[1], gold2[2]); doc.setFontSize(18); doc.text('.ai', brandX + doc.getTextWidth('CareTech360'), 36);
+  doc.setTextColor(255); doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.text(['Physician-designed intelligence.', 'Personalized to your practice. HIPAA-aligned.'], brandX, 50);
   doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.text('QUOTE', pw - M, 32, { align: 'right' });
   doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.text([w.quoteNo, `${fd(today)}  ·  Valid until ${fd(valid)}`], pw - M, 50, { align: 'right' });
   doc.setTextColor(20); let y = 104;
@@ -307,8 +410,11 @@ async function generatePDF(btn) {
 
 // ---------- events
 function renderNav() {
-  let g = ''; document.getElementById('nav').innerHTML = Object.entries(VIEWS).map(([k, v]) => { const hd = v.g !== g ? `<div class="ng">${(g = v.g)}</div>` : '';
-    return hd + `<a href="#${k}" class="${k === VIEW ? 'on' : ''}"><span>${v.icon}</span>${v.t}</a>`; }).join('');
+  const isAdmin = SESSION && SESSION.role === 'admin';
+  let g = ''; document.getElementById('nav').innerHTML = Object.entries(VIEWS)
+    .filter(([, v]) => !v.adminOnly || isAdmin)
+    .map(([k, v]) => { const hd = v.g !== g ? `<div class="ng">${(g = v.g)}</div>` : '';
+      return hd + `<a href="#${k}" class="${k === VIEW ? 'on' : ''}"><span>${v.icon}</span>${v.t}</a>`; }).join('');
 }
 document.addEventListener('input', e => {
   const t = e.target;
@@ -359,6 +465,69 @@ document.addEventListener('click', e => {
     for (const s of pool) { if (S.w.sel.length >= n) break; if (!s.sel && !names.has(s.n.toLowerCase())) { S.w.sel.push(s.id); names.add(s.n.toLowerCase()); } }
     recalc(true); return; }
   if (a === 'clearsvc') { S.w.sel = []; recalc(true); return; }
+  if (a === 'savequote') {
+    const qs = loadSavedQuotes();
+    const hostn = S.w.hosp.name.trim() || 'Untitled';
+    const mkt = S.q.market === 'IN' ? 'India' : 'USA';
+    const label = `${hostn} — ${mkt} · ${S.q.locs} loc · ${S.q.term}mo`;
+    const now = new Date().toISOString();
+    qs.unshift({ id: Date.now(), savedAt: now, updatedAt: now, createdBy: SESSION ? SESSION.name : 'Unknown', label, w: JSON.parse(JSON.stringify(S.w)), q: JSON.parse(JSON.stringify(S.q)), totals: { mrr: R.w.mrr, otc: R.w.otc, y1: R.w.y1 } });
+    saveSavedQuotesStore(qs); toast('Quote saved'); renderView(); return; }
+  if (a === 'loadquote') { const i = +b.dataset.i, qs = loadSavedQuotes(), q = qs[i]; if (!q) return;
+    openDialog('Load quote?', `Load "<b>${esc(q.label)}</b>"? Your current quote will be replaced.`, 'Load', () => {
+      S.w = JSON.parse(JSON.stringify(q.w)); S.q = JSON.parse(JSON.stringify(q.q));
+      S.wc.wf.forEach(w => Object.assign(w, workflowMeta(w)));
+      S.w.step = 4; VIEW = 'quote'; location.hash = 'quote'; recalc(true); toast('Quote loaded'); }); return; }
+  if (a === 'renamequote') { const i = +b.dataset.i, qs = loadSavedQuotes(), q = qs[i]; if (!q) return;
+    openDialog('Rename quote', `<div class="row col"><label>Name</label><input class="txt" id="ren-inp" value="${esc(q.label)}"></div>`, 'Save', () => {
+      const v = (document.getElementById('ren-inp') || {}).value?.trim(); if (!v) return;
+      qs[i].label = v; qs[i].updatedAt = new Date().toISOString(); saveSavedQuotesStore(qs); recalc(true); }); return; }
+  if (a === 'delquote') { const i = +b.dataset.i, qs = loadSavedQuotes(), q = qs[i]; if (!q) return;
+    openDialog('Delete saved quote?', `"${esc(q.label)}" will be permanently deleted.`, 'Delete', () => { qs.splice(i, 1); saveSavedQuotesStore(qs); recalc(true); }); return; }
+  if (a === 'clearquotes') { openDialog('Clear all saved quotes?', 'All saved quotes will be permanently deleted.', 'Clear all', () => { saveSavedQuotesStore([]); recalc(true); toast('All saved quotes cleared'); }); return; }
+  if (a === 'adduser') {
+    if (!SESSION || SESSION.role !== 'admin') return;
+    openDialog('Add user', `<div class="row col"><label>User ID</label><input class="txt" id="nu-id" placeholder="e.g. jsmith" autocomplete="off"></div>
+      <div class="row col" style="margin-top:10px"><label>Name</label><input class="txt" id="nu-name" placeholder="Full name"></div>
+      <div class="row col" style="margin-top:10px"><label>Password</label><input class="txt" id="nu-pwd" type="password" placeholder="Password"></div>
+      <div class="row col" style="margin-top:10px"><label>Role</label><select id="nu-role" class="txt"><option value="user">User</option><option value="admin">Admin</option></select></div>`,
+      'Add user', () => {
+        const id = ((document.getElementById('nu-id') || {}).value || '').trim().toLowerCase();
+        const name = ((document.getElementById('nu-name') || {}).value || '').trim();
+        const pwd = (document.getElementById('nu-pwd') || {}).value || '';
+        const role = (document.getElementById('nu-role') || {}).value || 'user';
+        if (!id || !name || !pwd) { toast('Fill in all fields'); return; }
+        const users = loadUsers() || [];
+        if (users.find(u => u.id === id)) { toast('User ID already exists'); return; }
+        users.push({ id, name, password: pwd, role, addedAt: new Date().toISOString() });
+        saveUsers(users); recalc(true); toast(`User "${name}" added`); }); return; }
+  if (a === 'deluser') {
+    if (!SESSION || SESSION.role !== 'admin') return;
+    const uid = b.dataset.uid;
+    if (uid === SESSION.userId) { toast('Cannot delete your own account'); return; }
+    const users = loadUsers() || []; const u = users.find(x => x.id === uid); if (!u) return;
+    if (u.role === 'admin' && users.filter(x => x.role === 'admin').length <= 1) { toast('Cannot remove the last admin'); return; }
+    openDialog('Remove user?', `Remove <b>${esc(u.name)}</b> (${esc(u.id)})? This cannot be undone.`, 'Remove', () => {
+      const us = loadUsers() || []; const idx = us.findIndex(x => x.id === uid);
+      if (idx >= 0) { us.splice(idx, 1); saveUsers(us); recalc(true); toast('User removed'); } }); return; }
+  if (a === 'edituser') {
+    if (!SESSION || SESSION.role !== 'admin') return;
+    const uid = b.dataset.uid; const users = loadUsers() || []; const u = users.find(x => x.id === uid); if (!u) return;
+    openDialog('Edit user', `<div class="row col"><label>User ID</label><input class="txt" value="${esc(u.id)}" disabled style="opacity:.55;cursor:not-allowed"></div>
+      <div class="row col" style="margin-top:10px"><label>Name</label><input class="txt" id="eu-name" value="${esc(u.name)}"></div>
+      <div class="row col" style="margin-top:10px"><label>Password</label><input class="txt" id="eu-pwd" type="text" value="${esc(u.password)}" placeholder="Leave blank to keep current"></div>
+      <div class="row col" style="margin-top:10px"><label>Role</label><select id="eu-role" class="txt"><option value="user"${u.role==='user'?' selected':''}>User</option><option value="admin"${u.role==='admin'?' selected':''}>Admin</option></select></div>`,
+      'Save changes', () => {
+        const name = ((document.getElementById('eu-name')||{}).value||'').trim();
+        const pwd  = ((document.getElementById('eu-pwd') ||{}).value||'').trim();
+        const role = ((document.getElementById('eu-role')||{}).value)||u.role;
+        if (!name) { toast('Name cannot be empty'); return; }
+        const us = loadUsers() || []; const idx = us.findIndex(x => x.id === uid); if (idx < 0) return;
+        if (us[idx].role === 'admin' && role !== 'admin' && us.filter(x => x.role === 'admin').length <= 1) { toast('Cannot remove the last admin role'); return; }
+        us[idx].name = name; if (pwd) us[idx].password = pwd; us[idx].role = role;
+        saveUsers(us);
+        if (uid === SESSION.userId) { SESSION.name = name; SESSION.role = role; persistSession(SESSION); renderSideUser(); }
+        recalc(true); toast('User updated'); }); return; }
   if (a === 'pdf') { generatePDF(b); return; }
   if (a === 'copy') { copyQuote(); return; }
   if (a === 'newquote') { openDialog('Start a new quote?', 'Hospital details and selections will be cleared. Your pricing model settings stay as they are.', 'Start new quote', () => {
@@ -410,6 +579,14 @@ function copyQuote() {
   const text = out.join('\n');
   try { navigator.clipboard.writeText(text).then(() => toast('Summary copied'), () => fallbackCopy(text)); } catch (e) { fallbackCopy(text); }
 }
-function route() { const h = location.hash.slice(1); VIEW = VIEWS[h] ? h : 'quote'; renderNav(); renderKPI(); renderView(); window.scrollTo(0, 0); }
+function route() {
+  if (!SESSION) return;
+  const h = location.hash.slice(1);
+  if (VIEWS[h] && VIEWS[h].adminOnly && (!SESSION || SESSION.role !== 'admin')) { location.hash = 'quote'; return; }
+  VIEW = VIEWS[h] ? h : 'quote'; renderNav(); renderKPI(); renderView(); window.scrollTo(0, 0);
+}
 window.addEventListener('hashchange', route);
-R = compute(S); route();
+// Auth-gated startup
+SESSION = checkSession();
+initLoginScreen();
+if (SESSION) { showApp(); R = compute(S); route(); }

@@ -314,7 +314,7 @@ function wizard(S, R, X) {
   const unitPrice = Mo.fee + bundled, unitCost = Mo.platCostB + sum(sel.map(s => s.cost));
   const unitCostIN = (md.platCost ?? X.platCostIN) + sum(sel.map(s => s.costIN));
   const need = P.count ? Math.max(0, P.count - sel.length) : 0, complete = sel.length > 0 && need === 0 && (!P.count || sel.length === P.count);
-  const provIncl = P.prov * locs, extraProv = Math.max(0, w.providers - provIncl), provPrice = safeDiv(w.provCost, w.provM);
+  const provIncl = P.prov * locs, extraProv = Math.max(0, w.providers - P.prov), provPrice = safeDiv(w.provCost, w.provM);
   const incTok = sum(sel.map(s => s.tok)), overPerLoc = Math.max(0, q.usage - incTok), overTot = overPerLoc * locs;
   const setupPrice = safeDiv(w.setupCost, w.setupM);
   const inP = (p, c, f) => IN ? Math.max(p * rc.index, safeDiv(c, f)) : p;
@@ -327,7 +327,7 @@ function wizard(S, R, X) {
   const pkgName = P.n + (P.k === 'custom' ? '' : ' package');
   add('pkg', pkgName, sel.length + ' services · platform, hosting, security, support', 'location / month', true, sel.length ? locs : 0,
     IN ? Math.max(unitPrice * rc.index, safeDiv(unitCostIN, fl[0])) : unitPrice, IN ? unitCostIN : unitCost, fl[0]);
-  add('prov', 'Additional providers', `${P.prov} providers per location included (${provIncl} total)`, 'provider / month', true, extraProv, inP(provPrice, w.provCost, fl[0]), w.provCost, fl[0]);
+  add('prov', 'Additional providers', `${P.prov} providers per location included; ${extraProv} above limit`, 'provider / month', true, extraProv, inP(provPrice, w.provCost, fl[0]), w.provCost, fl[0]);
   const overPrice = IN ? R.mp[3].M : R.wc.overPrice, overCost = IN ? R.mp[3].inCost : X.tokCost;
   add('usage', 'AI usage above allowance', `${+incTok.toFixed(2)}M tokens per location included; est. ${+q.usage}M used`, '1M tokens / month', true, overTot, overPrice, overCost, fl[1]);
   const appNames = md.apps.filter(a => a.sel).map(a => a.n + (a.qty > 1 ? ' ×' + a.qty : '')).join(', ');

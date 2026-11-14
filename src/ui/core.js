@@ -178,7 +178,7 @@ function vWorkflows() {
     <div class="wf-applet-grid">
       ${applet('New Build Effort','ONE-TIME','Total build investment',buildTotal,buildRows,`<span>Total effort</span>${o(nf(w.dev+w.arch+w.qa+w.pm+(w.onb||0),1)+' hours','b')}<span>Build recovery / loc / mo</span>${o(usd(recovery,2),'b')}`)}
       ${applet('Ongoing Cost','MONTHLY','Operating cost / location / month',running,runRows,`<span>All subscribing locations / month</span>${o(usd(running*w.locs,2),'b')}<span>Basis</span><span>Recurring per location</span>`)}
-    </div><div class="wf-combined"><div><b>Total cost / location / month</b><small>Build recovery + ongoing operations · ${india?'India':'USA'} rates</small></div>${o(usd(combined,2),'wf-combined-amount')}<div><small>After build recovery</small>${o(usd(running,2)+' / loc / mo','b')}</div>${!india?`<div><small>List price at target margin</small>${o(usd(c.P,2),'b')}</div>`:''}</div>
+    </div><div class="wf-combined"><div><b>Total cost / location / month</b><small>Ongoing operations · ${india?'India':'USA'} rates</small></div>${o(usd(combined,2),'wf-combined-amount')}<div><small>Operating cost / location / month</small>${o(usd(running,2)+' / loc / mo','b')}</div>${!india?`<div><small>List price at target margin</small>${o(usd(c.P,2),'b')}</div>`:''}</div>
     <p class="wf-footnote">Build recovery is shared across the workflow catalogue. Operating inputs are per location per month; recovery months apply only to the build. ${editing?'Changes save automatically.':'Choose Edit to update workflow details and cost inputs.'}</p></section>`;
   }
   return `<div class="workflow-screen">${head('Workflow Catalogue','Select a workflow to review its build investment and ongoing costs.')} ${toolbar}${list}${detail}</div>`;
@@ -360,6 +360,66 @@ function vRatesMarket() {
     table(['Service', 'US cost/unit', 'Target margin', 'US list/unit', 'US margin', 'India cost/unit', 'India index', 'Index price', 'Min floor', 'Floor price', 'India ($)', 'India (₹)', 'India margin', 'Basis', 'Saving'], mpRows, 'dense') +
     `<p class="foot">Non-labor costs (cloud, AI tokens, licenses, audits, travel) are equal in both markets; edit India costs on Cost build-up.</p>`);
   return head('Rates & India Pricing', 'Blended rate = US rate × (1 − India share) + India rate × India share. India market price = US list × price index.') + settings + rateCard + mpCard;
+}
+
+// ---------- USER MANAGEMENT
+function vUsers() {
+  if (!SESSION || SESSION.role !== 'admin') {
+    return head('User Management', '') + `<section class="card"><p class="mut" style="padding:16px 0">Admin access required.</p></section>`;
+  }
+  const users = loadUsers() || [];
+  const fd = s => { try { return new Date(s).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }); } catch { return '—'; } };
+  const rows = users.map(u => tr([
+    `<div style="display:flex;align-items:center;gap:10px"><span class="u-av">${esc(u.name[0].toUpperCase())}</span><div><b>${esc(u.name)}</b>${u.id === SESSION.userId ? ' <span class="badge good">You</span>' : ''}</div></div>`,
+    `<code style="font-size:12px">${esc(u.id)}</code>`,
+    `<span class="badge ${u.role === 'admin' ? 'good' : ''}">${esc(u.role)}</span>`,
+    `<code class="pwd-cell" style="font-size:12px;letter-spacing:.05em">${esc(u.password)}</code>`,
+    fd(u.addedAt),
+    `<div class="row-acts">
+      <button class="btn sm ghost edt-btn" data-act="edituser" data-uid="${esc(u.id)}">Edit</button>
+      ${u.id === SESSION.userId ? '' : `<button class="x" data-act="deluser" data-uid="${esc(u.id)}" title="Remove user">×</button>`}
+    </div>`
+  ]));
+  return head('User Management', 'Control who can sign in to the Easy Quote tool. Only admins can add or remove users.',
+    `<button class="btn" data-act="adduser">+ Add user</button>`) +
+    card('', table(['Name', 'User ID', 'Role', 'Password', 'Added', ''], rows));
+}
+
+// ---------- SAVED QUOTES
+function vSavedQuotes() {
+  const qs = loadSavedQuotes();
+  const fd = s => { try { return new Date(s).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }); } catch { return '—'; } };
+  if (!qs.length) {
+    return head('Saved Quotes', 'Save any quote from step 4 of Easy Quote. Load it back any time to review or modify.') +
+      `<section class="card"><p style="text-align:center;padding:32px 0;color:var(--mut)">No saved quotes yet — build a quote in Easy Quote and click <b>◉ Save quote</b>.</p></section>`;
+  }
+  const rows = qs.map((q, i) => {
+    const hostn = (q.w && q.w.hosp && q.w.hosp.name) ? esc(q.w.hosp.name) : '—';
+    const spec = (q.w && q.w.hosp && q.w.hosp.specialty) ? esc(q.w.hosp.specialty) : '—';
+    const mkt = q.q && q.q.market === 'IN' ? 'India' : 'USA';
+    const locs = q.q ? q.q.locs : '—';
+    const term = q.q ? q.q.term + ' mo' : '—';
+    const creator = q.createdBy ? esc(q.createdBy) : '—';
+    const savedTs = fd(q.savedAt);
+    const t = q.totals;
+    const priceCell = t
+      ? `<div style="text-align:right"><b style="font-size:14px;color:var(--pri)">${usd(t.mrr, 0)}<span class="mut" style="font-size:11px;font-weight:400"> /mo</span></b>${t.otc > 0 ? `<div class="mut" style="font-size:11px">+${usd(t.otc, 0)} setup</div>` : ''}<div class="mut" style="font-size:11px">${usd(t.y1, 0)} yr 1</div></div>`
+      : '<span class="mut">—</span>';
+    return tr([
+      `<div><b>${esc(q.label)}</b></div><div class="mut small">${hostn}</div>`,
+      spec, mkt, String(locs), term,
+      creator,
+      priceCell,
+      `<div><span>${savedTs}</span>${q.updatedAt && q.updatedAt !== q.savedAt ? `<small class="mut" style="display:block">Upd ${fd(q.updatedAt)}</small>` : ''}</div>`,
+      `<div class="row-acts">
+        <button class="btn sm" data-act="loadquote" data-i="${i}">Load</button>
+        <button class="btn sm ghost" data-act="renamequote" data-i="${i}">Rename</button>
+        <button class="x" data-act="delquote" data-i="${i}" title="Delete saved quote">×</button>
+      </div>`]);
+  });
+  return head('Saved Quotes', 'Load any saved quote to review, modify and re-generate the PDF. The current quote is replaced when you load.',
+    `<button class="btn ghost" data-act="clearquotes">Clear all</button>`) +
+    card('', table(['Quote name / Hospital', 'Specialty', 'Market', 'Locations', 'Term', 'Created by', 'Total price', 'Saved / Updated', ''], rows));
 }
 
 function renderView() { OC = 0; document.getElementById('view').innerHTML = VIEWS[VIEW].f(); }

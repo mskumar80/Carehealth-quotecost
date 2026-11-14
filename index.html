@@ -9,11 +9,83 @@
   <link rel="stylesheet" href="src/styles.css">
 </head>
 <body>
-  <div class="app">
+  <!-- Hidden SVG symbol defs — logo mark + wordmark from caretech360.ai -->
+  <svg style="display:none" aria-hidden="true">
+    <defs>
+      <!-- Geometric mark only (53×58 viewBox) -->
+      <symbol id="ct-mark" viewBox="0 0 53 58">
+        <g stroke-linecap="round">
+          <line x1="18.6" y1="5.3" x2="47.25" y2="6.63" stroke="#A8842F" stroke-width="1.6"/>
+          <line x1="18.6" y1="51.9" x2="47.25" y2="50.57" stroke="#A8842F" stroke-width="1.6"/>
+          <line x1="5.3" y1="28.6" x2="18.6" y2="5.3" stroke="#A8842F" stroke-width="1.6"/>
+          <line x1="5.3" y1="28.6" x2="18.6" y2="51.9" stroke="#A8842F" stroke-width="1.6"/>
+          <line x1="18.6" y1="5.3" x2="31.94" y2="28.6" stroke="#C8A24C" stroke-width="1.2" opacity=".55"/>
+          <line x1="18.6" y1="51.9" x2="31.94" y2="28.6" stroke="#C8A24C" stroke-width="1.2" opacity=".55"/>
+          <line x1="5.3" y1="28.6" x2="31.94" y2="28.6" stroke="#C8A24C" stroke-width="1.2" opacity=".55"/>
+        </g>
+        <circle cx="18.62" cy="5.3" r="3.66" fill="#A8842F"/>
+        <circle cx="5.31" cy="28.6" r="3.66" fill="#A8842F"/>
+        <circle cx="18.62" cy="51.9" r="3.66" fill="#A8842F"/>
+        <circle cx="47.25" cy="50.57" r="3.66" fill="#A8842F"/>
+        <circle cx="47.25" cy="6.63" r="3.66" fill="#C8A24C"/>
+        <circle cx="31.94" cy="28.6" r="4.99" fill="#C8A24C" stroke="#A8842F" stroke-width="1"/>
+      </symbol>
+    </defs>
+  </svg>
+
+  <!-- Login screen -->
+  <div id="login-screen" class="login-overlay">
+    <div class="login-left">
+      <!-- Brand mark -->
+      <div class="login-left-inner">
+        <div class="login-mark-wrap">
+          <svg class="login-mark-hero" viewBox="0 0 53 58" aria-hidden="true">
+            <use href="#ct-mark"/>
+          </svg>
+          <div class="login-mark-glow"></div>
+        </div>
+        <div class="login-wordmark">
+          <span class="lw-name">CareTech360</span><span class="lw-tld">.ai</span>
+        </div>
+        <p class="login-tagline">Physician-designed intelligence.<br>Personalized to your practice.</p>
+        <div class="login-features">
+          <div class="lf-item"><span class="lf-dot"></span>HIPAA-aligned clinical workflows</div>
+          <div class="lf-item"><span class="lf-dot"></span>AI-powered prior authorizations</div>
+          <div class="lf-item"><span class="lf-dot"></span>Specialty-focused practice OS</div>
+        </div>
+      </div>
+      <!-- Abstract clinical waveform decoration -->
+      <svg class="login-wave-svg" viewBox="0 0 500 80" preserveAspectRatio="none" aria-hidden="true">
+        <polyline points="0,50 40,50 55,20 70,70 85,35 100,50 150,50 170,15 190,65 210,30 230,50 280,50 300,25 315,60 330,40 345,50 400,50 420,18 440,62 460,38 480,50 500,50" fill="none" stroke="rgba(168,132,47,0.35)" stroke-width="1.5"/>
+        <polyline points="0,55 60,55 80,30 100,55 160,55 185,20 205,68 225,42 245,55 310,55 335,32 350,65 365,45 385,55 500,55" fill="none" stroke="rgba(200,162,76,0.18)" stroke-width="1"/>
+      </svg>
+    </div>
+    <div class="login-right">
+      <div class="login-form-wrap">
+        <div class="login-form-brand">
+          <svg width="22" height="24" viewBox="0 0 53 58" aria-hidden="true"><use href="#ct-mark"/></svg>
+          <span>Easy Quote</span>
+        </div>
+        <h2 class="login-form-title">Welcome back</h2>
+        <p class="login-form-sub">Sign in to your pricing workspace</p>
+        <div class="lf-row"><label>User ID</label><input type="text" id="login-uid" placeholder="Enter your user ID" autocomplete="username" spellcheck="false"></div>
+        <div class="lf-row"><label>Password</label><input type="password" id="login-pwd" placeholder="Enter your password" autocomplete="current-password"></div>
+        <div id="login-err" class="login-err" hidden></div>
+        <button id="login-btn" class="btn big login-submit">Sign in →</button>
+        <p class="login-hint">Contact your administrator to manage account access.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main app (shown after login) -->
+  <div class="app" style="display:none">
     <aside>
-      <div class="brand"><div class="lg">CT</div><div><b>CareTech360.AI</b><small>Easy Quote · pricing</small></div></div>
+      <div class="brand">
+        <svg class="brand-mark" width="20" height="22" viewBox="0 0 53 58" aria-hidden="true"><use href="#ct-mark"/></svg>
+        <div><b>CareTech360.AI</b><small>Easy Quote · pricing</small></div>
+      </div>
       <nav id="nav"></nav>
-      <div class="side-foot">Edits save automatically in this browser. Pricing model built from CareTech360-Pricing-Methods.xlsx.</div>
+      <div id="side-user" class="side-foot"></div>
     </aside>
     <main><div id="kpis"></div><div id="view"></div></main>
   </div>
