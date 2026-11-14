@@ -7,8 +7,15 @@ function saveUsers(arr) { try { localStorage.setItem(AU_KEY, JSON.stringify(arr)
 function getSession() { try { return JSON.parse(localStorage.getItem(AS_KEY) || 'null'); } catch { return null; } }
 function persistSession(u) { try { localStorage.setItem(AS_KEY, JSON.stringify(u)); } catch {} }
 function clearSession() { try { localStorage.removeItem(AS_KEY); } catch {} }
+const DEFAULT_ADMIN = { id: 'caretech', password: 'caretech360', name: 'CareTech Admin', role: 'admin' };
 // Seed default admin user if none exist
-(function() { if (!loadUsers()) saveUsers([{ id: 'caretech', password: 'caretech360', name: 'CareTech Admin', role: 'admin', addedAt: new Date().toISOString() }]); })();
+(function() { if (!loadUsers()) saveUsers([Object.assign({ addedAt: new Date().toISOString() }, DEFAULT_ADMIN)]); })();
+// Emergency recovery: open browser console and run ct360ResetAdmin() to restore default access
+window.ct360ResetAdmin = function() {
+  saveUsers([Object.assign({ addedAt: new Date().toISOString() }, DEFAULT_ADMIN)]);
+  clearSession();
+  alert('Admin reset. User ID: caretech  Password: caretech360\nRefresh the page to log in.');
+};
 let SESSION = null;
 function checkSession() { const s = getSession(); if (!s) return null; const users = loadUsers() || []; return users.find(u => u.id === s.userId) ? s : null; }
 function tryLogin(uid, pwd) { const u = (loadUsers() || []).find(x => x.id === uid.trim().toLowerCase() && x.password === pwd.trim()); return u ? { userId: u.id, name: u.name, role: u.role } : null; }
@@ -47,10 +54,17 @@ function initLoginScreen() {
     pwd.type = show ? 'text' : 'password';
     tog.textContent = show ? 'Hide' : 'Show';
   });
+  let failCount = 0;
   function doLogin() {
     const sess = tryLogin(uid.value, pwd.value);
     if (sess) { SESSION = sess; persistSession(sess); showApp(); R = compute(S); location.hash = 'quote'; route(); }
-    else { err.textContent = 'Incorrect user ID or password.'; err.hidden = false; pwd.value = ''; pwd.focus(); }
+    else {
+      failCount++;
+      err.textContent = failCount >= 3
+        ? 'Still failing? Open browser console (F12) and run: ct360ResetAdmin()'
+        : 'Incorrect user ID or password.';
+      err.hidden = false; pwd.value = ''; pwd.focus();
+    }
   }
   btn.addEventListener('click', doLogin);
   pwd.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
@@ -521,7 +535,7 @@ document.addEventListener('click', e => {
     const uid = b.dataset.uid; const users = loadUsers() || []; const u = users.find(x => x.id === uid); if (!u) return;
     openDialog('Edit user', `<div class="row col"><label>User ID</label><input class="txt" value="${esc(u.id)}" disabled style="opacity:.55;cursor:not-allowed"></div>
       <div class="row col" style="margin-top:10px"><label>Name</label><input class="txt" id="eu-name" value="${esc(u.name)}"></div>
-      <div class="row col" style="margin-top:10px"><label>Password</label><input class="txt" id="eu-pwd" type="text" value="${esc(u.password)}" placeholder="Leave blank to keep current"></div>
+      <div class="row col" style="margin-top:10px"><label>Password</label><input class="txt" id="eu-pwd" type="password" value="" placeholder="Leave blank to keep current" autocomplete="new-password" autocorrect="off" autocapitalize="off"></div>
       <div class="row col" style="margin-top:10px"><label>Role</label><select id="eu-role" class="txt"><option value="user"${u.role==='user'?' selected':''}>User</option><option value="admin"${u.role==='admin'?' selected':''}>Admin</option></select></div>`,
       'Save changes', () => {
         const name = ((document.getElementById('eu-name')||{}).value||'').trim();
